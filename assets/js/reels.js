@@ -86,7 +86,7 @@
 
         // If we hit the end, reset and loop back for infinite scrolling
         if (!hasMore) {
-            console.log('FCM Reels: End reached. Shuffling and resetting...');
+            console.log('FCM Orbits: End reached. Shuffling and resetting...');
             nextCursor = '';
             hasMore = true;
             discoverySeed = Math.floor(Math.random() * 999999);
@@ -171,7 +171,7 @@
         if (lastSlide && videos.length > 0) {
             const lastId = parseInt(lastSlide.dataset.id);
             if (parseInt(videos[0].id) === lastId) {
-                console.log('FCM Reels: Filtering out duplicate video ID ' + lastId + ' at batch junction.');
+                console.log('FCM Orbits: Filtering out duplicate video ID ' + lastId + ' at batch junction.');
                 videos.shift();
             }
         }
@@ -189,7 +189,7 @@
         // If we have too many slides in the DOM, remove the oldest ones to save memory.
         const allSlides = slidesWrap.querySelectorAll('.reel-slide');
         if (allSlides.length > 40) {
-            console.log('FCM Reels: Performing DOM cleanup (Removing oldest 10 slides).');
+            console.log('FCM Orbits: Performing DOM cleanup (Removing oldest 10 slides).');
             for (let i = 0; i < 10; i++) {
                 const s = allSlides[i];
                 const v = s.querySelector('.reel-video');

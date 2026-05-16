@@ -38,8 +38,8 @@ class FCM_Reels_Admin {
      */
     public function add_menu() {
         add_menu_page(
-            'FCM Reels',
-            'FCM Reels',
+            'FCM Orbits',
+            'FCM Orbits',
             'manage_options',
             'fcm-reels',
             [ $this, 'render_settings_page' ],
@@ -92,7 +92,7 @@ class FCM_Reels_Admin {
         $pages = get_pages();
         ?>
         <div class="wrap">
-            <h1>FCM Reels Settings</h1>
+            <h1>FCM Orbits Settings</h1>
             
             <form method="post" action="">
                 <?php wp_nonce_field( 'fcm_reels_settings' ); ?>
@@ -101,7 +101,7 @@ class FCM_Reels_Admin {
                     <h2>General Configuration</h2>
                     <table class="form-table">
                         <tr>
-                            <th scope="row">Reels Page</th>
+                            <th scope="row">Orbits Page</th>
                             <td>
                                 <select name="reels_page_id" class="regular-text">
                                     <option value="0">-- Select Page --</option>

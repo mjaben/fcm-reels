@@ -88,8 +88,8 @@ class FCM_Reels_Page {
                 'follow'     => __( 'Follow', 'fcm-reels' ),
                 'mute'       => __( 'Mute', 'fcm-reels' ),
                 'unmute'     => __( 'Unmute', 'fcm-reels' ),
-                'loading'    => __( 'Loading reels...', 'fcm-reels' ),
-                'no_videos'  => __( 'No videos found.', 'fcm-reels' ),
+                'loading'    => __( 'Loading orbits...', 'fcm-reels' ),
+                'no_videos'  => __( 'No orbits found.', 'fcm-reels' ),
                 'login_like' => __( 'Log in to like this video.', 'fcm-reels' ),
             ],
         ] );
@@ -172,8 +172,8 @@ class FCM_Reels_Page {
                 'follow'     => __( 'Follow', 'fcm-reels' ),
                 'mute'       => __( 'Mute', 'fcm-reels' ),
                 'unmute'     => __( 'Unmute', 'fcm-reels' ),
-                'loading'    => __( 'Loading reels...', 'fcm-reels' ),
-                'no_videos'  => __( 'No videos found.', 'fcm-reels' ),
+                'loading'    => __( 'Loading orbits...', 'fcm-reels' ),
+                'no_videos'  => __( 'No orbits found.', 'fcm-reels' ),
                 'login_like' => __( 'Log in to like this video.', 'fcm-reels' ),
             ],
         ] );

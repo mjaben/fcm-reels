@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: FCM Reels
+ * Plugin Name: FCM Orbits
  * Plugin URI:  https://intasela.com
- * Description: Video Feed
+ * Description: Video Feed (Orbits)
  * Version:     1.0.7
  * Author:      Matthew John Alex
  * Text Domain: fcm-reels

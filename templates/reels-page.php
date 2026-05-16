@@ -27,7 +27,7 @@
 
         <div class="reels-header__title">
             <img class="reels-icon-img" src="<?php echo esc_url( FCM_REELS_URL . 'assets/img/video-icon.png' ); ?>" alt="" width="20" height="20">
-            <?php esc_html_e( 'Reels', 'fcm-reels' ); ?> <span class="reels-beta-badge">Beta</span>
+            <?php esc_html_e( 'Orbits', 'fcm-reels' ); ?> <span class="reels-beta-badge">Beta</span>
         </div>
 
         <div class="reels-header__actions">
@@ -52,19 +52,19 @@
     </div>
 
     <!-- Main Reel Feed Container -->
-    <main class="reels-feed" id="reels-feed" aria-label="<?php esc_attr_e( 'Video Reels Feed', 'fcm-reels' ); ?>">
+    <main class="reels-feed" id="reels-feed" aria-label="<?php esc_attr_e( 'Orbits Feed', 'fcm-reels' ); ?>">
 
         <!-- Loading Skeleton -->
         <div class="reels-loader" id="reels-loader" aria-live="polite">
             <div class="reels-loader__spinner"></div>
-            <p><?php esc_html_e( 'Loading reels...', 'fcm-reels' ); ?></p>
+            <p><?php esc_html_e( 'Loading orbits...', 'fcm-reels' ); ?></p>
         </div>
 
         <!-- Empty State -->
         <div class="reels-empty" id="reels-empty" style="display:none;">
             <div class="reels-empty__icon">&#127909;</div>
-            <h3><?php esc_html_e( 'No videos yet', 'fcm-reels' ); ?></h3>
-            <p><?php esc_html_e( 'Be the first to share a video with the community!', 'fcm-reels' ); ?></p>
+            <h3><?php esc_html_e( 'No orbits yet', 'fcm-reels' ); ?></h3>
+            <p><?php esc_html_e( 'Be the first to share an orbit with the community!', 'fcm-reels' ); ?></p>
             <a href="<?php echo esc_url( home_url() ); ?>" class="reels-btn reels-btn--primary">
                 <?php esc_html_e( 'Go to Community', 'fcm-reels' ); ?>
             </a>
@@ -90,7 +90,7 @@
         <div class="reels-modal__content">
             <button class="reels-modal__close" id="reels-share-close" aria-label="<?php esc_attr_e( 'Close', 'fcm-reels' ); ?>">&#10005;</button>
             <div id="reels-share-preview" class="reels-share-preview"></div>
-            <h3><?php esc_html_e( 'Share this Reel', 'fcm-reels' ); ?></h3>
+            <h3><?php esc_html_e( 'Share this Orbit', 'fcm-reels' ); ?></h3>
             <div class="reels-share-url">
                 <input type="text" id="reels-share-input" readonly aria-label="<?php esc_attr_e( 'Share URL', 'fcm-reels' ); ?>">
                 <button id="reels-copy-btn" class="reels-btn reels-btn--primary">
