@@ -218,7 +218,13 @@ class FCM_Reels_Query {
 
         $ids = $wpdb->get_col( $sql );
         
-        if ( empty( $ids ) ) return [];
+        if ( empty( $ids ) ) {
+            error_log( "FCM Orbits: Discovery Pool EMPTY on LIVE. SQL: " . $sql );
+            if ( $wpdb->last_error ) {
+                error_log( "FCM Orbits SQL ERROR: " . $wpdb->last_error );
+            }
+            return [];
+        }
 
         // SMALL LIBRARY MULTIPLIER:
         // If we have very few videos, we multiply them into a larger pool 
