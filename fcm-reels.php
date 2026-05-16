@@ -23,6 +23,11 @@ define('FCM_REELS_URL', plugin_dir_url(__FILE__));
  */
 add_action('plugins_loaded', 'fcm_reels_init');
 add_action('wp_enqueue_scripts', 'fcm_reels_enqueue_global_assets');
+add_action('fcm_reels_hourly_task', ['FCM_Reels_DB', 'aggregate_metrics']);
+
+if (!wp_next_scheduled('fcm_reels_hourly_task')) {
+    wp_schedule_event(time(), 'hourly', 'fcm_reels_hourly_task');
+}
 
 /**
  * Enqueue global assets like the upload monitor.
@@ -57,10 +62,14 @@ function fcm_reels_init()
         return;
     }
 
+    require_once FCM_REELS_DIR . 'includes/class-fcm-reels-db.php';
     require_once FCM_REELS_DIR . 'includes/class-fcm-reels-query.php';
     require_once FCM_REELS_DIR . 'includes/class-fcm-reels-api.php';
     require_once FCM_REELS_DIR . 'includes/class-fcm-reels-page.php';
     require_once FCM_REELS_DIR . 'admin/class-fcm-reels-admin.php';
+
+    // Initialize Database
+    FCM_Reels_DB::init_tables();
 
     (new FCM_Reels_API())->register();
     (new FCM_Reels_Page())->register();

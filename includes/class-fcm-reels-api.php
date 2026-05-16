@@ -108,16 +108,29 @@ class FCM_Reels_API {
             'permission_callback' => [ $this, 'check_permission' ],
         ] );
 
-        // POST /fcm-reels/v1/view (Log a video view)
-        register_rest_route( 'fcm-reels/v1', '/view', [
+        // POST /fcm-reels/v1/track (Log granular events)
+        register_rest_route( $namespace, '/track', [
             'methods'             => 'POST',
-            'callback'            => [ $this, 'log_view' ],
-            'permission_callback' => '__return_true', // Public tracking
+            'callback'            => [ $this, 'track_event' ],
+            'permission_callback' => '__return_true',
             'args'                => [
-                'id' => [
-                    'required'          => true,
-                    'sanitize_callback' => 'absint',
-                ],
+                'video_id'      => [ 'required' => true, 'sanitize_callback' => 'absint' ],
+                'event_type'    => [ 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ],
+                'watch_seconds' => [ 'default'  => 0, 'sanitize_callback' => 'absint' ],
+                'session_id'    => [ 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ],
+                'device'        => [ 'default'  => 'desktop', 'sanitize_callback' => 'sanitize_text_field' ],
+            ],
+        ] );
+
+        // POST /fcm-reels/v1/session (Track feed sessions)
+        register_rest_route( $namespace, '/session', [
+            'methods'             => 'POST',
+            'callback'            => [ $this, 'track_session' ],
+            'permission_callback' => '__return_true',
+            'args'                => [
+                'session_id'    => [ 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ],
+                'viewed_count'  => [ 'default'  => 0, 'sanitize_callback' => 'absint' ],
+                'total_watch'   => [ 'default'  => 0, 'sanitize_callback' => 'absint' ],
             ],
         ] );
 
@@ -201,31 +214,62 @@ class FCM_Reels_API {
     }
 
     /**
-     * Log a video view.
+     * Log a granular analytics event.
      *
      * @param WP_REST_Request $request
      * @return WP_REST_Response
      */
-    public function log_view( $request ) {
-        $video_id = $request->get_param( 'id' );
-        
-        if ( ! $video_id ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => 'Invalid ID' ], 400 );
+    public function track_event( $request ) {
+        global $wpdb;
+        $table = FCM_Reels_DB::get_events_table();
+
+        $inserted = $wpdb->insert( $table, [
+            'user_id'       => get_current_user_id(),
+            'video_id'      => $request->get_param( 'video_id' ),
+            'event_type'    => $request->get_param( 'event_type' ),
+            'watch_seconds' => $request->get_param( 'watch_seconds' ),
+            'session_id'    => $request->get_param( 'session_id' ),
+            'device'        => $request->get_param( 'device' ),
+            'created_at'    => current_time( 'mysql' ),
+        ] );
+
+        if ( $inserted && $request->get_param( 'event_type' ) === 'video_view' ) {
+            // Still increment the legacy counter for backward compatibility with existing shortcodes
+            $posts_table = $wpdb->prefix . 'fcom_posts';
+            $wpdb->query( $wpdb->prepare( "UPDATE {$posts_table} SET views_count = views_count + 1 WHERE id = %d", $request->get_param( 'video_id' ) ) );
         }
 
+        return new WP_REST_Response( [ 'success' => (bool) $inserted ], 200 );
+    }
+
+    /**
+     * Track or update a feed session.
+     *
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function track_session( $request ) {
         global $wpdb;
-        $posts_table = $wpdb->prefix . 'fcom_posts';
+        $table = FCM_Reels_DB::get_sessions_table();
+        $session_id = $request->get_param( 'session_id' );
 
-        // Increment views_count directly in DB
-        $updated = $wpdb->query( $wpdb->prepare(
-            "UPDATE {$posts_table} SET views_count = views_count + 1 WHERE id = %d",
-            $video_id
-        ) );
+        $exists = $wpdb->get_var( $wpdb->prepare( "SELECT session_id FROM $table WHERE session_id = %s", $session_id ) );
 
-        if ( $updated === false ) {
-            error_log( "FCM Orbits Error: Failed to update views for ID $video_id" );
+        if ( $exists ) {
+            $wpdb->update( $table, [
+                'viewed_count'       => $request->get_param( 'viewed_count' ),
+                'total_watch_time'   => $request->get_param( 'total_watch' ),
+                'updated_at'         => current_time( 'mysql' ),
+            ], [ 'session_id' => $session_id ] );
         } else {
-            error_log( "FCM Orbits: Logged view for ID $video_id. Rows affected: $updated" );
+            $wpdb->insert( $table, [
+                'session_id'         => $session_id,
+                'user_id'            => get_current_user_id(),
+                'viewed_count'       => $request->get_param( 'viewed_count' ),
+                'total_watch_time'   => $request->get_param( 'total_watch' ),
+                'created_at'         => current_time( 'mysql' ),
+                'updated_at'         => current_time( 'mysql' ),
+            ] );
         }
 
         return new WP_REST_Response( [ 'success' => true ], 200 );

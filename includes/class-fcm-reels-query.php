@@ -198,20 +198,25 @@ class FCM_Reels_Query {
             $space_where = $wpdb->prepare( "AND sp.slug = %s", $space );
         }
 
-        // Generate the ranked universe using the Stochastic Waterfall
+        $metrics_tbl = FCM_Reels_DB::get_metrics_table();
+
+        // Generate the ranked universe using the Intelligent Analytics Waterfall
+        // Score = (Watch Time x 0.4) + (Completion Rate x 0.3) + (Engagement Score x 0.2) + (Random discovery factor)
         $sql = "
             SELECT p.id
             FROM {$posts_tbl} p
             INNER JOIN {$archive_tbl} ma ON ma.feed_id = p.id
             LEFT JOIN {$spaces_tbl} sp ON sp.id = p.space_id
+            LEFT JOIN {$metrics_tbl} m ON m.video_id = p.id
             WHERE ma.is_active = 1
               AND (ma.media_type = 'fluent_player' OR ma.media_type LIKE 'video/%' OR ma.media_type = 'video')
               AND p.status = 'published'
               {$space_where}
             ORDER BY (
-                (LOG10(IFNULL(p.reactions_count, 0) + IFNULL(p.comments_count, 0) + 1) * 2.0)
-                + (CASE WHEN p.created_at > NOW() - INTERVAL 1 DAY THEN 1.5 ELSE 0 END)
-                + (RAND({$seed}) * 2.5)
+                (IFNULL(m.avg_watch_time, 0) * 0.4)
+                + (IFNULL(m.completion_rate, 0) * 0.003) -- Normalizing 0-100 to weighted factor
+                + (IFNULL(m.engagement_score, 0) * 0.2)
+                + (RAND({$seed}) * 5.0) -- Higher random factor for fresh discovery
             ) DESC
             LIMIT 500
         ";

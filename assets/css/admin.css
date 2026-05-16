@@ -1,0 +1,244 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --orbit-green: #2ecc71;
+    --orbit-green-dark: #27ae60;
+    --orbit-green-light: #e8f8f0;
+    --orbit-bg: #f0f2f5;
+    --orbit-card-bg: #ffffff;
+    --orbit-text: #2c3e50;
+    --orbit-text-muted: #7f8c8d;
+    --orbit-border: #e1e4e8;
+    --orbit-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    --orbit-radius: 12px;
+    --orbit-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fcm-orbit-admin-wrap {
+    font-family: 'Outfit', sans-serif;
+    color: var(--orbit-text);
+    max-width: 1000px;
+    margin: 30px auto;
+    padding: 0 20px;
+}
+
+.fcm-orbit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 40px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--orbit-border);
+}
+
+.fcm-orbit-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--orbit-text);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.fcm-orbit-header h1 span {
+    color: var(--orbit-green);
+}
+
+.fcm-orbit-card {
+    background: var(--orbit-card-bg);
+    border-radius: var(--orbit-radius);
+    box-shadow: var(--orbit-shadow);
+    padding: 30px;
+    margin-bottom: 30px;
+    border: 1px solid var(--orbit-border);
+    transition: var(--orbit-transition);
+}
+
+.fcm-orbit-card:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+.fcm-orbit-card h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-top: 0;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--orbit-green-light);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.fcm-orbit-form-row {
+    margin-bottom: 25px;
+}
+
+.fcm-orbit-form-row:last-child {
+    margin-bottom: 0;
+}
+
+.fcm-orbit-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.fcm-orbit-input-wrapper {
+    position: relative;
+}
+
+.fcm-orbit-input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid var(--orbit-border);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 15px;
+    transition: var(--orbit-transition);
+    background: #fdfdfd;
+}
+
+.fcm-orbit-input:focus {
+    border-color: var(--orbit-green);
+    outline: none;
+    box-shadow: 0 0 0 4px var(--orbit-green-light);
+    background: #fff;
+}
+
+.fcm-orbit-description {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--orbit-text-muted);
+    line-height: 1.5;
+}
+
+.fcm-orbit-submit-wrap {
+    position: sticky;
+    bottom: 20px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 15px 25px;
+    border-radius: 50px;
+    display: flex;
+    justify-content: flex-end;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    z-index: 100;
+    margin-top: 40px;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+.fcm-orbit-button {
+    background: var(--orbit-green);
+    color: white;
+    border: none;
+    padding: 14px 30px;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    transition: var(--orbit-transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+}
+
+.fcm-orbit-button:hover {
+    background: var(--orbit-green-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+}
+
+.fcm-orbit-button:active {
+    transform: translateY(0);
+}
+
+/* Developer Reference Table */
+.fcm-orbit-table-wrap {
+    margin-top: 50px;
+}
+
+.fcm-orbit-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: #fff;
+    border-radius: var(--orbit-radius);
+    overflow: hidden;
+    box-shadow: var(--orbit-shadow);
+}
+
+.fcm-orbit-table th {
+    background: #f8f9fa;
+    padding: 15px 20px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--orbit-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--orbit-border);
+}
+
+.fcm-orbit-table td {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--orbit-border);
+    font-size: 14px;
+}
+
+.fcm-orbit-table tr:last-child td {
+    border-bottom: none;
+}
+
+.fcm-orbit-table code {
+    background: #f1f2f6;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    color: var(--orbit-green-dark);
+}
+
+/* Notifications */
+.fcm-orbit-notice {
+    background: #fff;
+    border-left: 5px solid var(--orbit-green);
+    padding: 15px 25px;
+    border-radius: 8px;
+    box-shadow: var(--orbit-shadow);
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* Custom Select Styling */
+select.fcm-orbit-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%237f8c8d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    background-size: 18px;
+    padding-right: 45px;
+}
+
+/* Hide standard WP wrap margins if needed */
+#wpbody-content .wrap {
+    margin: 0;
+}
+
+/* Sidebar Menu Icon Size */
+#toplevel_page_fcm-reels .wp-menu-image img {
+    width: 20px !important;
+    height: 20px !important;
+    padding: 0 !important;
+    margin-top: 7px !important; /* Center it vertically in the menu item */
+}

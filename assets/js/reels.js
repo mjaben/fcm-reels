@@ -47,6 +47,10 @@
     let activeSlide = null;
     let progressTimer = null;
     let viewTimer = null;
+    let heartbeatTimer = null;
+    const sessionId = 'orb_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+    let sessionViewedCount = 0;
+    let sessionTotalWatchTime = 0;
 
     /* ─────────────────────────────────────────────
        INIT
@@ -225,6 +229,9 @@
         videoEl.addEventListener('waiting', () => slide.classList.add('is-loading'));
         videoEl.addEventListener('playing', () => slide.classList.remove('is-loading'));
         videoEl.addEventListener('canplay', () => slide.classList.remove('is-loading'));
+        videoEl.addEventListener('ended', () => {
+            trackEvent(video.id, 'video_complete');
+        });
 
         return slide;
     }
@@ -275,8 +282,20 @@
         // 👁️ View Tracking
         if (viewTimer) clearTimeout(viewTimer);
         viewTimer = setTimeout(() => {
-            logView(parseInt(slide.dataset.id));
-        }, 3000);
+            trackEvent(parseInt(slide.dataset.id), 'video_view');
+            sessionViewedCount++;
+            updateSession();
+        }, 2000); // 2 seconds to count as a "view"
+
+        // 💓 Heartbeat Tracking (Watch Time)
+        if (heartbeatTimer) clearInterval(heartbeatTimer);
+        heartbeatTimer = setInterval(() => {
+            if (!v.paused) {
+                sessionTotalWatchTime += 2;
+                trackEvent(parseInt(slide.dataset.id), 'heartbeat', 2);
+                updateSession();
+            }
+        }, 2000);
 
         // Proactive Batching
         const allSlides = Array.from(slidesWrap.querySelectorAll('.reel-slide'));
@@ -289,6 +308,7 @@
     function deactivateSlide(slide) {
         if (activeSlide === slide) {
             if (viewTimer) { clearTimeout(viewTimer); viewTimer = null; }
+            if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
         }
         const v = slide.querySelector('.reel-video');
         if (v) { v.pause(); v.currentTime = 0; }
@@ -357,6 +377,10 @@
             const data = await resp.json();
             countEl.textContent = formatCount(data.likes_count);
             slide.dataset.likesCount = data.likes_count;
+
+            if (data.liked) {
+                trackEvent(videoId, 'video_like');
+            }
         } catch {
             likeBtn.classList.toggle('is-liked');
             countEl.textContent = formatCount(prevCount);
@@ -473,25 +497,40 @@
         if (seenVideos.length > 200) seenVideos.shift();
         localStorage.setItem(seenKey, JSON.stringify(seenVideos));
     }
-    async function logView(id) {
+    async function trackEvent(videoId, eventType, watchSeconds = 0) {
+        const device = window.innerWidth < 768 ? 'mobile' : 'desktop';
         try {
-            const resp = await fetch(`${API}/view`, {
+            fetch(`${API}/track`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': NONCE },
-                body: JSON.stringify({ id: id })
+                body: JSON.stringify({
+                    video_id: videoId,
+                    event_type: eventType,
+                    watch_seconds: watchSeconds,
+                    session_id: sessionId,
+                    device: device
+                })
             });
-            if (resp.ok) {
-                console.log('FCM Orbits: View logged for ' + id);
-                const slide = document.querySelector(`.reel-slide[data-id="${id}"]`);
-                if (slide) {
-                    const countEl = slide.querySelector('.reel-views-btn .reel-action-btn__count');
-                    if (countEl) {
-                        let current = parseInt(countEl.textContent.replace(/[^0-9]/g, '')) || 0;
-                        countEl.textContent = formatCount(current + 1);
-                    }
-                }
-            }
         } catch (e) { }
+    }
+
+    async function updateSession() {
+        try {
+            fetch(`${API}/session`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': NONCE },
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    viewed_count: sessionViewedCount,
+                    total_watch: sessionTotalWatchTime
+                })
+            });
+        } catch (e) { }
+    }
+
+    async function logView(id) {
+        // Deprecated: used by legacy systems, redirected to trackEvent internally in API if needed
+        trackEvent(id, 'video_view');
     }
 
     // Interaction Boot
