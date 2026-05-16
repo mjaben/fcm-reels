@@ -93,6 +93,11 @@ class FCM_Reels_DB {
     /**
      * Get the sessions table name.
      */
+    public static function get_sessions_table() {
+        global $wpdb;
+        return $wpdb->prefix . 'orbit_feed_sessions';
+    }
+
     /**
      * Aggregate raw events into metrics.
      */

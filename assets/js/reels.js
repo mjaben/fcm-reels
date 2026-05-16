@@ -498,11 +498,18 @@
         localStorage.setItem(seenKey, JSON.stringify(seenVideos));
     }
     async function trackEvent(videoId, eventType, watchSeconds = 0) {
+        if (!videoId || !eventType) {
+            console.warn('[Orbit] Missing videoId or eventType for tracking');
+            return;
+        }
+
         const device = window.innerWidth < 768 ? 'mobile' : 'desktop';
+        console.log(`[Orbit] Dispatching pulse: ${eventType} for video ${videoId}`);
+
         try {
             fetch(`${API}/pulse`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }, // Nonce removed to avoid cache rejection
+                headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
                 body: JSON.stringify({
                     video_id: videoId,
@@ -511,11 +518,22 @@
                     session_id: sessionId,
                     device: device
                 })
+            }).then(r => r.json()).then(data => {
+                if (data.success) {
+                    console.log(`[Orbit] Pulse recorded: ${eventType}`);
+                } else {
+                    console.error(`[Orbit] Pulse failed:`, data);
+                }
+            }).catch(err => {
+                console.error('[Orbit] Pulse transport error:', err);
             });
-        } catch (e) { }
+        } catch (e) {
+            console.error('[Orbit] Pulse execution error:', e);
+        }
     }
 
     async function updateSession() {
+        if (!sessionId) return;
         try {
             fetch(`${API}/stream-session`, {
                 method: 'POST',

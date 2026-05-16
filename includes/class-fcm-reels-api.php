@@ -112,7 +112,7 @@ class FCM_Reels_API {
         register_rest_route( $namespace, '/pulse', [
             'methods'             => 'POST',
             'callback'            => [ $this, 'track_event' ],
-            'permission_callback' => '__return_true',
+            'permission_callback' => function() { return true; },
             'args'                => [
                 'video_id'      => [ 'required' => true, 'sanitize_callback' => 'absint' ],
                 'event_type'    => [ 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ],
@@ -126,7 +126,7 @@ class FCM_Reels_API {
         register_rest_route( $namespace, '/stream-session', [
             'methods'             => 'POST',
             'callback'            => [ $this, 'track_session' ],
-            'permission_callback' => '__return_true',
+            'permission_callback' => function() { return true; },
             'args'                => [
                 'session_id'    => [ 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ],
                 'viewed_count'  => [ 'default'  => 0, 'sanitize_callback' => 'absint' ],
@@ -220,6 +220,7 @@ class FCM_Reels_API {
      * @return WP_REST_Response
      */
     public function track_event( $request ) {
+        error_log( "FCM Orbits API: Pulse received for video " . $request->get_param( 'video_id' ) );
         global $wpdb;
         $table = FCM_Reels_DB::get_events_table();
 
