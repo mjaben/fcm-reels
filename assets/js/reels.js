@@ -500,9 +500,9 @@
     async function trackEvent(videoId, eventType, watchSeconds = 0) {
         const device = window.innerWidth < 768 ? 'mobile' : 'desktop';
         try {
-            fetch(`${API}/track`, {
+            fetch(`${API}/pulse`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': NONCE },
+                headers: { 'Content-Type': 'application/json' }, // Nonce removed to avoid cache rejection
                 credentials: 'same-origin',
                 body: JSON.stringify({
                     video_id: videoId,
@@ -517,9 +517,9 @@
 
     async function updateSession() {
         try {
-            fetch(`${API}/session`, {
+            fetch(`${API}/stream-session`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': NONCE },
+                headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
                 body: JSON.stringify({
                     session_id: sessionId,

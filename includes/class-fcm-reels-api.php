@@ -108,8 +108,8 @@ class FCM_Reels_API {
             'permission_callback' => [ $this, 'check_permission' ],
         ] );
 
-        // POST /fcm-reels/v1/track (Log granular events)
-        register_rest_route( $namespace, '/track', [
+        // POST /fcm-reels/v1/pulse (Log granular events)
+        register_rest_route( $namespace, '/pulse', [
             'methods'             => 'POST',
             'callback'            => [ $this, 'track_event' ],
             'permission_callback' => '__return_true',
@@ -122,8 +122,8 @@ class FCM_Reels_API {
             ],
         ] );
 
-        // POST /fcm-reels/v1/session (Track feed sessions)
-        register_rest_route( $namespace, '/session', [
+        // POST /fcm-reels/v1/stream-session (Track feed sessions)
+        register_rest_route( $namespace, '/stream-session', [
             'methods'             => 'POST',
             'callback'            => [ $this, 'track_session' ],
             'permission_callback' => '__return_true',
