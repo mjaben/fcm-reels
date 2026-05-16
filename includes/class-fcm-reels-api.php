@@ -1,0 +1,327 @@
+<?php
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+/**
+ * FCM_Reels_API
+ *
+ * Registers and handles the REST API endpoints that power the reel feed.
+ */
+class FCM_Reels_API {
+
+    /**
+     * Register REST API routes.
+     *
+     * @return void
+     */
+    public function register() {
+        add_action( 'rest_api_init', [ $this, 'register_routes' ] );
+        add_action( 'add_attachment', [ $this, 'sync_to_cf_stream' ] );
+    }
+
+    /**
+     * Hook into WordPress uploads to sync videos to Cloudflare Stream.
+     *
+     * @param int $attachment_id
+     * @return void
+     */
+    public function sync_to_cf_stream( $attachment_id ) {
+        if ( get_option( 'fcm_reels_cf_sync_enabled' ) !== 'yes' ) return;
+
+        $post = get_post( $attachment_id );
+        if ( ! $post || strpos( $post->post_mime_type, 'video/' ) === false ) return;
+
+        $account_id = get_option( 'fcm_reels_cf_account_id' );
+        $api_token  = get_option( 'fcm_reels_cf_api_token' );
+        if ( ! $account_id || ! $api_token ) return;
+
+        $video_url = wp_get_attachment_url( $attachment_id );
+        if ( ! $video_url ) return;
+
+        // Use Cloudflare "Upload from URL" API
+        $endpoint = "https://api.cloudflare.com/client/v4/accounts/{$account_id}/stream/copy";
+        
+        $response = wp_remote_post( $endpoint, [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $api_token,
+                'Content-Type'  => 'application/json',
+            ],
+            'body' => wp_json_encode( [
+                'url'  => $video_url,
+                'meta' => [
+                    'name'          => $post->post_title,
+                    'attachment_id' => $attachment_id,
+                    'source'        => 'fcm-reels-sync'
+                ]
+            ] )
+        ] );
+
+        if ( is_wp_error( $response ) ) return;
+
+        $data = json_decode( wp_remote_retrieve_body( $response ), true );
+        if ( ! empty( $data['result']['uid'] ) ) {
+            // Save the Cloudflare Video UID to the attachment meta
+            update_post_meta( $attachment_id, '_fcm_reels_cf_uid', $data['result']['uid'] );
+            update_post_meta( $attachment_id, '_fcm_reels_cf_hls_url', $data['result']['playback']['hls'] );
+        }
+    }
+
+    /**
+     * Define the REST API routes.
+     *
+     * @return void
+     */
+    public function register_routes() {
+        $namespace = 'fcm-reels/v1';
+
+        // Main video feed endpoint.
+        register_rest_route( $namespace, '/feed', [
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => [ $this, 'get_feed' ],
+            'permission_callback' => [ $this, 'check_permission' ],
+            'args'                => [
+                'page'       => [
+                    'default'           => 1,
+                    'sanitize_callback' => 'absint',
+                ],
+                'per_page'   => [
+                    'default'           => 10,
+                    'sanitize_callback' => 'absint',
+                ],
+                'space'      => [
+                    'default'           => '',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'order_by'   => [
+                    'default'           => 'discovery',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'seed'       => [
+                    'default'           => 0,
+                    'sanitize_callback' => 'absint',
+                ],
+                'exclude'    => [
+                    'default'           => '',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ] );
+
+        // Spaces filter list endpoint.
+        register_rest_route( $namespace, '/spaces', [
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => [ $this, 'get_spaces' ],
+            'permission_callback' => [ $this, 'check_permission' ],
+        ] );
+
+        // Like/unlike a video post.
+        register_rest_route( $namespace, '/like/(?P<id>\d+)', [
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => [ $this, 'toggle_like' ],
+            'permission_callback' => [ $this, 'require_login' ],
+            'args'                => [
+                'id' => [
+                    'required'          => true,
+                    'sanitize_callback' => 'absint',
+                ],
+            ],
+        ] );
+
+        // Update thumbnail endpoint.
+        register_rest_route( $namespace, '/videos/(?P<id>\d+)/thumbnail', [
+            'methods'             => 'POST',
+            'callback'            => [ $this, 'update_video_thumbnail' ],
+            'permission_callback' => [ $this, 'update_thumbnail_permissions' ],
+        ] );
+    }
+
+    /**
+     * Permission: allow access if the reel page is public, or user is logged in.
+     * Respects the plugin's "require login" setting.
+     *
+     * @return bool|WP_Error
+     */
+    public function check_permission() {
+        $require_login = get_option( 'fcm_reels_require_login', 'no' );
+        if ( $require_login === 'yes' && ! is_user_logged_in() ) {
+            return new WP_Error( 'rest_forbidden', __( 'You must be logged in to view reels.', 'fcm-reels' ), [ 'status' => 401 ] );
+        }
+        return true;
+    }
+
+    /**
+     * Permission: requires the user to be logged in.
+     *
+     * @return bool|WP_Error
+     */
+    public function require_login() {
+        if ( ! is_user_logged_in() ) {
+            return new WP_Error( 'rest_forbidden', __( 'You must be logged in.', 'fcm-reels' ), [ 'status' => 401 ] );
+        }
+        return true;
+    }
+
+    /**
+     * GET /fcm-reels/v1/feed
+     * Returns a paginated list of video reels.
+     *
+     * @param WP_REST_Request $request Incoming request.
+     * @return WP_REST_Response
+     */
+    public function get_feed( WP_REST_Request $request ) {
+        $query    = new FCM_Reels_Query();
+        $per_page = min( absint( $request->get_param( 'per_page' ) ), 20 ); // Cap at 20.
+        $data     = $query->get_videos(
+            $request->get_param( 'page' ),
+            $per_page,
+            $request->get_param( 'space' ),
+            $request->get_param( 'order_by' ),
+            $request->get_param( 'seed' ),
+            $request->get_param( 'exclude' )
+        );
+
+        return rest_ensure_response( $data );
+    }
+
+    /**
+     * GET /fcm-reels/v1/spaces
+     * Returns spaces that contain video content (for the filter bar).
+     *
+     * @param WP_REST_Request $request Incoming request.
+     * @return WP_REST_Response
+     */
+    public function get_spaces( WP_REST_Request $request ) {
+        $query  = new FCM_Reels_Query();
+        $spaces = $query->get_spaces_with_videos();
+        return rest_ensure_response( [ 'spaces' => $spaces ] );
+    }
+
+    /**
+     * POST /fcm-reels/v1/like/{id}
+     * Toggles a like reaction on a feed post using FCM's own reaction system.
+     *
+     * @param WP_REST_Request $request Incoming request.
+     * @return WP_REST_Response|WP_Error
+     */
+    public function toggle_like( WP_REST_Request $request ) {
+        global $wpdb;
+
+        $feed_id    = $request->get_param( 'id' );
+        $user_id    = get_current_user_id();
+        $react_tbl  = $wpdb->prefix . 'fcom_reactions';
+        $posts_tbl  = $wpdb->prefix . 'fcom_posts';
+
+        // Confirm the post is a published video.
+        $post = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT id, reactions_count FROM {$posts_tbl}
+                 WHERE id = %d AND status = 'published' LIMIT 1",
+                $feed_id
+            )
+        );
+
+        if ( ! $post ) {
+            return new WP_Error( 'not_found', __( 'Video not found.', 'fcm-reels' ), [ 'status' => 404 ] );
+        }
+
+        // Check existing like.
+        $existing = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT id FROM {$react_tbl}
+                 WHERE object_id = %d AND object_type = 'feed' AND user_id = %d AND type = 'like' LIMIT 1",
+                $feed_id,
+                $user_id
+            )
+        );
+
+        if ( $existing ) {
+            // Unlike.
+            $wpdb->delete( $react_tbl, [ 'id' => $existing ] );
+            $new_count = max( 0, (int) $post->reactions_count - 1 );
+            $liked     = false;
+        } else {
+            // Like.
+            $wpdb->insert( $react_tbl, [
+                'object_id'   => $feed_id,
+                'object_type' => 'feed',
+                'user_id'     => $user_id,
+                'type'        => 'like',
+                'created_at'  => current_time( 'mysql' ),
+                'updated_at'  => current_time( 'mysql' ),
+            ] );
+            $new_count = (int) $post->reactions_count + 1;
+            $liked     = true;
+        }
+
+        // Update the cached count on the post.
+        $wpdb->update( $posts_tbl, [ 'reactions_count' => $new_count ], [ 'id' => $feed_id ] );
+
+        return rest_ensure_response( [
+            'liked'       => $liked,
+            'likes_count' => $new_count,
+        ] );
+    }
+
+    /**
+     * Permission check for updating thumbnails.
+     */
+    public function update_thumbnail_permissions( $request ) {
+        // For now, allow logged in users. 
+        // In production, we might limit to admins or the post author.
+        return is_user_logged_in();
+    }
+
+    /**
+     * Receive a base64 image and save it as the featured image for a post.
+     */
+    public function update_video_thumbnail( $request ) {
+        $post_id = $request['id'];
+        $image_data = $request->get_param( 'image' ); // Base64 data
+
+        if ( ! $image_data || strpos( $image_data, 'data:image' ) !== 0 ) {
+            return new WP_Error( 'invalid_image', 'Invalid image data', [ 'status' => 400 ] );
+        }
+
+        // Check if post already has a thumbnail (don't overwrite if manually set)
+        if ( has_post_thumbnail( $post_id ) ) {
+            return [ 'success' => true, 'message' => 'Already has thumbnail' ];
+        }
+
+        // Process Base64
+        list( $type, $data ) = explode( ';', $image_data );
+        list( , $data )      = explode( ',', $data );
+        $image_binary        = base64_decode( $data );
+
+        // Save to temp file
+        $filename = 'reel-thumb-' . $post_id . '.jpg';
+        $upload   = wp_upload_bits( $filename, null, $image_binary );
+
+        if ( $upload['error'] ) {
+            return new WP_Error( 'upload_err', $upload['error'], [ 'status' => 500 ] );
+        }
+
+        // Create attachment
+        $wp_filetype = wp_check_filetype( $filename, null );
+        $attachment = [
+            'post_mime_type' => $wp_filetype['type'],
+            'post_title'     => 'Thumbnail for Reel #' . $post_id,
+            'post_content'   => '',
+            'post_status'    => 'inherit'
+        ];
+
+        $attach_id = wp_insert_attachment( $attachment, $upload['file'], $post_id );
+        
+        require_once( ABSPATH . 'wp-admin/includes/image.php' );
+        $attach_data = wp_generate_attachment_metadata( $attach_id, $upload['file'] );
+        wp_update_attachment_metadata( $attach_id, $attach_data );
+
+        set_post_thumbnail( $post_id, $attach_id );
+
+        return [
+            'success' => true,
+            'url'     => wp_get_attachment_url( $attach_id )
+        ];
+    }
+}

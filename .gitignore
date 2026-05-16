@@ -1,0 +1,9 @@
+# Ignore all other plugins
+fluent-community/
+fluent-community-pro/
+fluent-player/
+fluent-cart/
+*.zip
+
+# Keep only the custom plugin
+!fcm-orbits/
