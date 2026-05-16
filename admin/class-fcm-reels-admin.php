@@ -317,8 +317,8 @@ class FCM_Reels_Admin {
         $total_views = $wpdb->get_var( "SELECT SUM(total_views) FROM $table_metrics" ) ?: 0;
         $total_likes = $wpdb->get_var( "SELECT SUM(total_likes) FROM $table_metrics" ) ?: 0;
         $total_comments = $wpdb->get_var( "SELECT SUM(total_comments) FROM $table_metrics" ) ?: 0;
-        $avg_vtr = $wpdb->get_var( "SELECT AVG(vtr) FROM $table_metrics" ) ?: 0;
-        $avg_completion = $wpdb->get_var( "SELECT AVG(completion_rate) FROM $table_metrics" ) ?: 0;
+        $avg_vtr = $wpdb->get_var( "SELECT AVG(vtr) FROM $table_metrics WHERE total_views > 0" ) ?: 0;
+        $avg_completion = $wpdb->get_var( "SELECT AVG(completion_rate) FROM $table_metrics WHERE total_views > 0" ) ?: 0;
         
         $archive_tbl = $wpdb->prefix . 'fcom_media_archive';
         $total_videos = $wpdb->get_var( "
@@ -396,7 +396,7 @@ class FCM_Reels_Admin {
                         <th>Views</th>
                         <th>VTR</th>
                         <th>Completion</th>
-                        <th>Engagement</th>
+                        <th>Engagement <span style="font-size: 10px; font-weight: normal; color: #888; display: block;">(Likes x2 + Comments x5)</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -440,7 +440,7 @@ class FCM_Reels_Admin {
                         <th>Orbits</th>
                         <th>Total Views</th>
                         <th>Avg. VTR</th>
-                        <th>Total Engagement</th>
+                        <th>Total Engagement <span style="font-size: 10px; font-weight: normal; color: #888; display: block;">(Likes x2 + Comments x5)</span></th>
                     </tr>
                 </thead>
                 <tbody>

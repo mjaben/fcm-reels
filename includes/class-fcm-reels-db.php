@@ -107,8 +107,16 @@ class FCM_Reels_DB {
         $table_metrics = self::get_metrics_table();
         $posts_tbl = $wpdb->prefix . 'fcom_posts';
 
-        // 1. Get all video IDs that have events
-        $video_ids = $wpdb->get_col( "SELECT DISTINCT video_id FROM $table_events" );
+        $archive_tbl = $wpdb->prefix . 'fcom_media_archive';
+        $video_ids = $wpdb->get_col( "
+            SELECT DISTINCT p.id 
+            FROM $posts_tbl p 
+            INNER JOIN $archive_tbl ma ON ma.feed_id = p.id 
+            WHERE p.status = 'published' 
+            AND ma.is_active = 1 
+            AND (ma.media_type = 'fluent_player' OR ma.media_type LIKE 'video/%' OR ma.media_type = 'video')
+        " );
+
 
         foreach ( $video_ids as $video_id ) {
             $video_id = absint( $video_id );
