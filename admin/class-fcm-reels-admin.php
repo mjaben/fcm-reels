@@ -319,7 +319,7 @@ class FCM_Reels_Admin {
         $total_comments = $wpdb->get_var( "SELECT SUM(total_comments) FROM $table_metrics" ) ?: 0;
         $avg_vtr = $wpdb->get_var( "SELECT AVG(vtr) FROM $table_metrics" ) ?: 0;
         $avg_completion = $wpdb->get_var( "SELECT AVG(completion_rate) FROM $table_metrics" ) ?: 0;
-        $total_engagement = $wpdb->get_var( "SELECT SUM(engagement_score) FROM $table_metrics" ) ?: 0;
+        $total_videos = $wpdb->get_var( "SELECT COUNT(*) FROM $table_metrics" ) ?: 0;
 
         // Top Videos
         $top_videos = $wpdb->get_results( "
@@ -352,6 +352,10 @@ class FCM_Reels_Admin {
         </style>
 
         <div id="overview" class="fcm-analytics-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 40px; scroll-margin-top: 100px;">
+            <div class="fcm-orbit-card" style="margin-bottom: 0; text-align: center; background: var(--orbit-green-light); border: none;">
+                <div style="font-size: 11px; color: var(--orbit-green-dark); text-transform: uppercase; letter-spacing: 1px;">Total Videos</div>
+                <div style="font-size: 32px; font-weight: 700; margin-top: 10px; color: var(--orbit-green-dark);"><?php echo number_format($total_videos); ?></div>
+            </div>
             <div class="fcm-orbit-card" style="margin-bottom: 0; text-align: center;">
                 <div style="font-size: 11px; color: var(--orbit-text-muted); text-transform: uppercase; letter-spacing: 1px;">Total Views</div>
                 <div style="font-size: 32px; font-weight: 700; margin-top: 10px; color: var(--orbit-green);"><?php echo number_format($total_views); ?></div>
@@ -371,10 +375,6 @@ class FCM_Reels_Admin {
             <div class="fcm-orbit-card" style="margin-bottom: 0; text-align: center;">
                 <div style="font-size: 11px; color: var(--orbit-text-muted); text-transform: uppercase; letter-spacing: 1px;">Avg. Completion</div>
                 <div style="font-size: 32px; font-weight: 700; margin-top: 10px; color: #e67e22;"><?php echo round($avg_completion, 1); ?>%</div>
-            </div>
-            <div class="fcm-orbit-card" style="margin-bottom: 0; text-align: center; background: var(--orbit-green-light); border: none;">
-                <div style="font-size: 11px; color: var(--orbit-green-dark); text-transform: uppercase; letter-spacing: 1px;">Engagement Score</div>
-                <div style="font-size: 32px; font-weight: 700; margin-top: 10px; color: var(--orbit-green-dark);"><?php echo number_format($total_engagement); ?></div>
             </div>
         </div>
 
