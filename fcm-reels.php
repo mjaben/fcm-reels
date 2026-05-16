@@ -3,7 +3,7 @@
  * Plugin Name: FCM Reels
  * Plugin URI:  https://intasela.com
  * Description: Video Feed
- * Version:     1.0.6
+ * Version:     1.0.7
  * Author:      Matthew John Alex
  * Text Domain: fcm-reels
  * Requires Plugins: fluent-community, fluent-player
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('FCM_REELS_VERSION', '1.0.6');
+define('FCM_REELS_VERSION', '1.0.7');
 define('FCM_REELS_FILE', __FILE__);
 define('FCM_REELS_DIR', plugin_dir_path(__FILE__));
 define('FCM_REELS_URL', plugin_dir_url(__FILE__));
@@ -101,12 +101,12 @@ function fcm_reels_inject_social_meta()
     }
 
     $thumb_url = '';
-    
+
     // 1. Prioritize Featured Image
     if (has_post_thumbnail($post->ID)) {
         $thumb_url = get_the_post_thumbnail_url($post->ID, 'large');
     }
-    
+
     // 2. Fallback to common video icon if no thumbnail exists
     if (!$thumb_url) {
         $thumb_url = FCM_REELS_URL . 'assets/img/video-icon.png';
