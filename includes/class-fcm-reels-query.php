@@ -17,6 +17,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class FCM_Reels_Query {
 
+    private $pool_expiry = 43200; // 12 hours
+
     /**
      * Fetch a paginated list of reel videos.
      *
@@ -112,70 +114,191 @@ class FCM_Reels_Query {
             LIMIT %d OFFSET %d
         ";
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare( $sql, $per_page + 1, $offset )
-        );
+        return [ 'videos' => [], 'has_more' => false ];
+    }
 
-        // Universal Gap-Filling: If we didn't get enough "New" videos to fill the page,
-        // fill the remaining slots with "Seen" videos (starting from the beginning).
-        if ( count( $rows ) < $per_page && ! empty( $exclude_ids ) ) {
-            $count_needed = ( $per_page + 1 ) - count( $rows );
-            $sql_fallback = str_replace( $exclude_where, '', $sql );
-            
-            // Add a sub-exclusion to avoid duplicates within this same page
-            $already_got = array_column( $rows, 'post_id' );
-            if ( ! empty( $already_got ) ) {
-                $sql_fallback = str_replace( "WHERE ma.is_active = 1", "WHERE ma.is_active = 1 AND p.id NOT IN (" . implode( ',', array_map( 'absint', $already_got ) ) . ")", $sql_fallback );
+    /**
+     * Discovery Engine 2.0: Get videos via Cursor-Based Delivery.
+     *
+     * @param string $cursor   Base64 encoded cursor.
+     * @param int    $per_page Number of videos to fetch.
+     * @param string $space    Optional space filter.
+     * @param int    $seed     Random seed.
+     * @return array
+     */
+    public function get_videos_v2( $cursor = '', $per_page = 8, $space = '', $seed = 0 ) {
+        $user_id = get_current_user_id();
+        $per_page = absint( $per_page );
+
+        // 1. Decode Cursor or Generate First Pool
+        $index = 0;
+        if ( ! empty( $cursor ) ) {
+            $decoded = json_decode( base64_decode( $cursor ), true );
+            if ( $decoded && isset( $decoded['i'] ) ) {
+                $index = absint( $decoded['i'] );
+                $seed  = isset( $decoded['s'] ) ? absint( $decoded['s'] ) : $seed;
             }
-
-            // Reset offset to 0 for the "Fill" part to ensure it always finds content
-            $fill_rows = $wpdb->get_results(
-                $wpdb->prepare( $sql_fallback, $count_needed, 0 )
-            );
-            $rows = array_merge( $rows, $fill_rows );
         }
 
-        // FORCE INFINITE: As long as the site has videos, we tell the app there's ALWAYS more.
-        $has_more = ( ! empty( $rows ) || $page === 1 );
-        $rows     = array_slice( $rows, 0, $per_page );
-
-        if ( empty( $rows ) ) {
-            return [
-                'videos'   => [],
-                'has_more' => false,
-                'total'    => 0,
-                'page'     => $page,
-            ];
+        // 2. Get/Generate the Universe Pool
+        $pool = $this->get_discovery_pool( $user_id, $space, $seed );
+        
+        if ( empty( $pool ) ) {
+            return [ 'videos' => [], 'next_cursor' => null, 'has_more' => false ];
         }
 
-        // ── Build video objects ────────────────────────────────────────────
+        // 3. Slice the pool for this chunk
+        $ids = array_slice( $pool, $index, $per_page );
+        $next_index = $index + count( $ids );
+        $has_more = $next_index < count( $pool );
+
+        if ( empty( $ids ) ) {
+            // Pool exhausted: Generate a NEW pool with a NEW seed for infinite variety
+            $new_seed = rand( 1, 999999 );
+            return $this->get_videos_v2( '', $per_page, $space, $new_seed );
+        }
+
+        // 4. Fetch full data for these IDs (preserving order)
+        $videos = $this->get_videos_by_ids( $ids );
+
+        // 5. Generate Next Cursor
+        $next_cursor = null;
+        if ( $has_more ) {
+            $next_cursor = base64_encode( json_encode( [ 'i' => $next_index, 's' => $seed ] ) );
+        } else {
+            // End of pool? Send a "Loop" cursor with a fresh seed
+            $next_cursor = base64_encode( json_encode( [ 'i' => 0, 's' => rand( 1, 999999 ) ] ) );
+        }
+
+        return [
+            'videos'      => $videos,
+            'next_cursor' => $next_cursor,
+            'has_more'    => true // Always true for Discovery Engine 2.0
+        ];
+    }
+
+    /**
+     * Generate or retrieve the ranked ID pool for a session.
+     */
+    private function get_discovery_pool( $user_id, $space, $seed ) {
+        $cache_key = "fcm_reels_pool_{$user_id}_" . md5( $space . $seed );
+        $pool = get_transient( $cache_key );
+
+        if ( $pool !== false ) {
+            return $pool;
+        }
+
+        global $wpdb;
+        $archive_tbl = $wpdb->prefix . 'fcom_media_archive';
+        $posts_tbl   = $wpdb->prefix . 'fcom_posts';
+        $spaces_tbl  = $wpdb->prefix . 'fcom_spaces';
+
+        $space_where = '';
+        if ( ! empty( $space ) ) {
+            $space_where = $wpdb->prepare( "AND sp.slug = %s", $space );
+        }
+
+        // Generate the ranked universe using the Stochastic Waterfall
+        $sql = "
+            SELECT p.id
+            FROM {$posts_tbl} p
+            INNER JOIN {$archive_tbl} ma ON ma.feed_id = p.id
+            LEFT JOIN {$spaces_tbl} sp ON sp.id = p.space_id
+            WHERE ma.is_active = 1
+              AND (ma.media_type = 'fluent_player' OR ma.media_type LIKE 'video/%' OR ma.media_type = 'video')
+              AND p.status = 'published'
+              {$space_where}
+            ORDER BY (
+                (LOG10(IFNULL(p.reactions_count, 0) + IFNULL(p.comments_count, 0) + 1) * 2.0)
+                + (CASE WHEN p.created_at > NOW() - INTERVAL 1 DAY THEN 1.5 ELSE 0 END)
+                + (RAND({$seed}) * 2.5)
+            ) DESC
+            LIMIT 200
+        ";
+
+        $ids = $wpdb->get_col( $sql );
+        
+        if ( empty( $ids ) ) return [];
+
+        // SMALL LIBRARY MULTIPLIER:
+        // If we have very few videos, we multiply them into a larger pool 
+        // and shuffle them to ensure variety while preventing back-to-back duplicates.
+        $pool = $ids;
+        if ( count( $ids ) < 10 ) {
+            $pool = $ids; // Start with the first batch
+            for ( $i = 0; $i < 10; $i++ ) {
+                $temp = $ids;
+                shuffle( $temp );
+                
+                // 🛑 SMOOTH TRANSITION: 
+                // Ensure the first item of the new batch isn't the same as the last item of the pool
+                if ( ! empty( $pool ) && $pool[ count( $pool ) - 1 ] === $temp[0] && count( $temp ) > 1 ) {
+                    // Simple swap: Move the duplicate to the end of the temp batch
+                    $duplicate = array_shift( $temp );
+                    $temp[] = $duplicate;
+                }
+                
+                $pool = array_merge( $pool, $temp );
+            }
+        }
+
+        if ( ! empty( $pool ) ) {
+            set_transient( $cache_key, $pool, $this->pool_expiry );
+        }
+
+        return $pool;
+    }
+
+    /**
+     * Fetch full video objects for a specific list of IDs, preserving order.
+     */
+    private function get_videos_by_ids( $ids ) {
+        if ( empty( $ids ) ) return [];
+
+        global $wpdb;
+        $archive_tbl = $wpdb->prefix . 'fcom_media_archive';
+        $posts_tbl   = $wpdb->prefix . 'fcom_posts';
+        $xp_tbl      = $wpdb->prefix . 'fcom_xprofile';
+        $spaces_tbl  = $wpdb->prefix . 'fcom_spaces';
+
+        $id_list = implode( ',', array_map( 'absint', $ids ) );
+
+        $sql = "
+            SELECT
+                ma.id         AS archive_id,
+                ma.media_url  AS video_url,
+                ma.settings   AS media_settings,
+                ma.created_at AS archive_created_at,
+                p.id          AS post_id,
+                p.slug        AS post_slug,
+                p.title       AS post_title,
+                p.message     AS post_message,
+                p.meta        AS post_meta,
+                p.reactions_count,
+                p.comments_count,
+                p.user_id,
+                xp.display_name,
+                xp.avatar,
+                xp.username,
+                sp.title      AS space_title,
+                sp.slug       AS space_slug
+            FROM {$archive_tbl} ma
+            INNER JOIN {$posts_tbl} p ON p.id = ma.feed_id
+            LEFT JOIN {$xp_tbl} xp ON xp.user_id = p.user_id
+            LEFT JOIN {$spaces_tbl} sp ON sp.id = p.space_id
+            WHERE p.id IN ({$id_list})
+            ORDER BY FIELD(p.id, {$id_list})
+        ";
+
+        $rows = $wpdb->get_results( $sql );
+        $videos = [];
         $current_user_id = get_current_user_id();
-        $videos          = [];
 
         foreach ( $rows as $row ) {
             $videos[] = $this->format_video( $row, $current_user_id );
         }
 
-        // Total count (separate lightweight query).
-        $total = (int) $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT COUNT(*) FROM {$archive_tbl} ma
-                 INNER JOIN {$posts_tbl} p ON p.id = ma.feed_id
-                 {$space_join}
-                 WHERE ma.is_active = 1
-                   AND (ma.media_type = 'fluent_player' OR ma.media_type LIKE 'video/%')
-                   AND p.status = 'published'
-                   {$space_where}",
-                []
-            )
-        );
-
-        return [
-            'videos'   => $videos,
-            'has_more' => $has_more,
-            'total'    => $total,
-            'page'     => $page,
-        ];
+        return $videos;
     }
 
     /**

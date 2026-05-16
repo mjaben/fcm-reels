@@ -82,34 +82,26 @@ class FCM_Reels_API {
             'callback'            => [ $this, 'get_feed' ],
             'permission_callback' => [ $this, 'check_permission' ],
             'args'                => [
-                'page'       => [
-                    'default'           => 1,
-                    'sanitize_callback' => 'absint',
+                'cursor'     => [
+                    'default'           => '',
+                    'sanitize_callback' => 'sanitize_text_field',
                 ],
                 'per_page'   => [
-                    'default'           => 10,
+                    'default'           => 8,
                     'sanitize_callback' => 'absint',
                 ],
                 'space'      => [
                     'default'           => '',
                     'sanitize_callback' => 'sanitize_text_field',
                 ],
-                'order_by'   => [
-                    'default'           => 'discovery',
-                    'sanitize_callback' => 'sanitize_text_field',
-                ],
                 'seed'       => [
                     'default'           => 0,
                     'sanitize_callback' => 'absint',
                 ],
-                'exclude'    => [
-                    'default'           => '',
-                    'sanitize_callback' => 'sanitize_text_field',
-                ],
             ],
         ] );
 
-        // Spaces filter list endpoint.
+        // Space/Category list endpoint.
         register_rest_route( $namespace, '/spaces', [
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => [ $this, 'get_spaces' ],
@@ -127,13 +119,6 @@ class FCM_Reels_API {
                     'sanitize_callback' => 'absint',
                 ],
             ],
-        ] );
-
-        // Update thumbnail endpoint.
-        register_rest_route( $namespace, '/videos/(?P<id>\d+)/thumbnail', [
-            'methods'             => 'POST',
-            'callback'            => [ $this, 'update_video_thumbnail' ],
-            'permission_callback' => [ $this, 'update_thumbnail_permissions' ],
         ] );
     }
 
@@ -172,17 +157,21 @@ class FCM_Reels_API {
      */
     public function get_feed( WP_REST_Request $request ) {
         $query    = new FCM_Reels_Query();
-        $per_page = min( absint( $request->get_param( 'per_page' ) ), 20 ); // Cap at 20.
-        $data     = $query->get_videos(
-            $request->get_param( 'page' ),
-            $per_page,
-            $request->get_param( 'space' ),
-            $request->get_param( 'order_by' ),
-            $request->get_param( 'seed' ),
-            $request->get_param( 'exclude' )
-        );
+        $per_page = min( absint( $request->get_param( 'per_page' ) ), 20 );
+        $cursor   = $request->get_param( 'cursor' );
+        $space    = $request->get_param( 'space' );
+        $seed     = absint( $request->get_param( 'seed' ) );
 
-        return rest_ensure_response( $data );
+        $data = $query->get_videos_v2( $cursor, $per_page, $space, $seed );
+
+        $response = rest_ensure_response( $data );
+
+        // LiteSpeed & Cache Optimization: 
+        // Ensure discovery feeds are never cached by the server.
+        $response->header( 'Cache-Control', 'no-cache, must-revalidate, max-age=0' );
+        $response->header( 'Expires', 'Wed, 11 Jan 1984 05:00:00 GMT' );
+
+        return $response;
     }
 
     /**
@@ -264,64 +253,4 @@ class FCM_Reels_API {
         ] );
     }
 
-    /**
-     * Permission check for updating thumbnails.
-     */
-    public function update_thumbnail_permissions( $request ) {
-        // For now, allow logged in users. 
-        // In production, we might limit to admins or the post author.
-        return is_user_logged_in();
-    }
-
-    /**
-     * Receive a base64 image and save it as the featured image for a post.
-     */
-    public function update_video_thumbnail( $request ) {
-        $post_id = $request['id'];
-        $image_data = $request->get_param( 'image' ); // Base64 data
-
-        if ( ! $image_data || strpos( $image_data, 'data:image' ) !== 0 ) {
-            return new WP_Error( 'invalid_image', 'Invalid image data', [ 'status' => 400 ] );
-        }
-
-        // Check if post already has a thumbnail (don't overwrite if manually set)
-        if ( has_post_thumbnail( $post_id ) ) {
-            return [ 'success' => true, 'message' => 'Already has thumbnail' ];
-        }
-
-        // Process Base64
-        list( $type, $data ) = explode( ';', $image_data );
-        list( , $data )      = explode( ',', $data );
-        $image_binary        = base64_decode( $data );
-
-        // Save to temp file
-        $filename = 'reel-thumb-' . $post_id . '.jpg';
-        $upload   = wp_upload_bits( $filename, null, $image_binary );
-
-        if ( $upload['error'] ) {
-            return new WP_Error( 'upload_err', $upload['error'], [ 'status' => 500 ] );
-        }
-
-        // Create attachment
-        $wp_filetype = wp_check_filetype( $filename, null );
-        $attachment = [
-            'post_mime_type' => $wp_filetype['type'],
-            'post_title'     => 'Thumbnail for Reel #' . $post_id,
-            'post_content'   => '',
-            'post_status'    => 'inherit'
-        ];
-
-        $attach_id = wp_insert_attachment( $attachment, $upload['file'], $post_id );
-        
-        require_once( ABSPATH . 'wp-admin/includes/image.php' );
-        $attach_data = wp_generate_attachment_metadata( $attach_id, $upload['file'] );
-        wp_update_attachment_metadata( $attach_id, $attach_data );
-
-        set_post_thumbnail( $post_id, $attach_id );
-
-        return [
-            'success' => true,
-            'url'     => wp_get_attachment_url( $attach_id )
-        ];
-    }
 }
