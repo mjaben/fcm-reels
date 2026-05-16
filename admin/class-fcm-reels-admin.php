@@ -319,7 +319,16 @@ class FCM_Reels_Admin {
         $total_comments = $wpdb->get_var( "SELECT SUM(total_comments) FROM $table_metrics" ) ?: 0;
         $avg_vtr = $wpdb->get_var( "SELECT AVG(vtr) FROM $table_metrics" ) ?: 0;
         $avg_completion = $wpdb->get_var( "SELECT AVG(completion_rate) FROM $table_metrics" ) ?: 0;
-        $total_videos = $wpdb->get_var( "SELECT COUNT(*) FROM $table_metrics" ) ?: 0;
+        
+        $archive_tbl = $wpdb->prefix . 'fcom_media_archive';
+        $total_videos = $wpdb->get_var( "
+            SELECT COUNT(DISTINCT p.id) 
+            FROM $posts_tbl p 
+            INNER JOIN $archive_tbl ma ON ma.feed_id = p.id 
+            WHERE p.status = 'published' 
+            AND ma.is_active = 1 
+            AND (ma.media_type = 'fluent_player' OR ma.media_type LIKE 'video/%' OR ma.media_type = 'video')
+        " ) ?: 0;
 
         // Top Videos
         $top_videos = $wpdb->get_results( "
