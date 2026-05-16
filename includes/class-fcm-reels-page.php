@@ -79,7 +79,7 @@ class FCM_Reels_Page {
             'userId'       => get_current_user_id(),
             'loginUrl'     => esc_url( wp_login_url( get_permalink() ) ),
             'requireLogin' => get_option( 'fcm_reels_require_login', 'no' ),
-            'perPage'      => 8,
+            'perPage'      => 10,
             'labels'       => [
                 'like'       => __( 'Like', 'fcm-reels' ),
                 'liked'      => __( 'Liked', 'fcm-reels' ),
@@ -163,7 +163,7 @@ class FCM_Reels_Page {
             'userId'       => get_current_user_id(),
             'loginUrl'     => esc_url( wp_login_url( get_permalink() ) ),
             'requireLogin' => get_option( 'fcm_reels_require_login', 'no' ),
-            'perPage'      => 8,
+            'perPage'      => 10,
             'labels'       => [
                 'like'       => __( 'Like', 'fcm-reels' ),
                 'liked'      => __( 'Liked', 'fcm-reels' ),

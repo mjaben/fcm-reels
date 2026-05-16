@@ -185,11 +185,27 @@
         slidesWrap.appendChild(fragment);
         console.log('Successfully appended ' + videos.length + ' slides');
 
+        // 🧹 DOM GARBAGE COLLECTION:
+        // If we have too many slides in the DOM, remove the oldest ones to save memory.
+        const allSlides = slidesWrap.querySelectorAll('.reel-slide');
+        if (allSlides.length > 40) {
+            console.log('FCM Reels: Performing DOM cleanup (Removing oldest 10 slides).');
+            for (let i = 0; i < 10; i++) {
+                const s = allSlides[i];
+                const v = s.querySelector('.reel-video');
+                if (v) {
+                    v.pause();
+                    v.src = '';
+                    v.load();
+                }
+                s.remove();
+            }
+        }
+
         // Observe new slides for autoplay
         observeSlides();
 
         // If first load, play the first slide
-        const allSlides = slidesWrap.querySelectorAll('.reel-slide');
         if (allSlides.length > 0 && !activeSlide) {
             activateSlide(allSlides[0]);
         }

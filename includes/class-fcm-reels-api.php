@@ -87,7 +87,7 @@ class FCM_Reels_API {
                     'sanitize_callback' => 'sanitize_text_field',
                 ],
                 'per_page'   => [
-                    'default'           => 8,
+                    'default'           => 10,
                     'sanitize_callback' => 'absint',
                 ],
                 'space'      => [

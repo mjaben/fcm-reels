@@ -213,7 +213,7 @@ class FCM_Reels_Query {
                 + (CASE WHEN p.created_at > NOW() - INTERVAL 1 DAY THEN 1.5 ELSE 0 END)
                 + (RAND({$seed}) * 2.5)
             ) DESC
-            LIMIT 200
+            LIMIT 500
         ";
 
         $ids = $wpdb->get_col( $sql );
