@@ -114,6 +114,13 @@ class FCM_Reels_Admin {
             echo '<div class="fcm-orbit-notice"><span class="dashicons dashicons-update" style="color: #2ecc71; font-size: 24px; width: 24px; height: 24px;"></span> <p>Analytics metrics updated successfully!</p></div>';
         }
 
+        // Handle Manual Migration
+        if ( isset( $_POST['fcm_reels_trigger_migration'] ) ) {
+            check_admin_referer( 'fcm_reels_settings' );
+            FCM_Reels_DB::init_tables();
+            echo '<div class="fcm-orbit-notice"><span class="dashicons dashicons-database-add" style="color: #2ecc71; font-size: 24px; width: 24px; height: 24px;"></span> <p>Database tables synchronized successfully!</p></div>';
+        }
+
         $page_id         = (int) get_option( 'fcm_reels_page_id' );
         $require_login   = get_option( 'fcm_reels_require_login', 'no' );
         $cf_account_id   = get_option( 'fcm_reels_cf_account_id' );
@@ -456,6 +463,19 @@ class FCM_Reels_Admin {
                     <button type="submit" name="fcm_reels_trigger_aggregation" class="fcm-orbit-button" style="background: var(--orbit-text); padding: 10px 20px; font-size: 14px;">
                         <span class="dashicons dashicons-update" style="font-size: 16px; width: 16px; height: 16px;"></span>
                         Update Metrics Now
+                    </button>
+                </form>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--orbit-border);">
+                <div>
+                    <h4 style="margin: 0; font-size: 15px; font-weight: 600;">Database Migration</h4>
+                    <p class="fcm-orbit-description" style="margin: 5px 0 0 0;">Synchronize table columns and ensure the latest schema is applied.</p>
+                </div>
+                <form method="post" action="">
+                    <?php wp_nonce_field( 'fcm_reels_settings' ); ?>
+                    <button type="submit" name="fcm_reels_trigger_migration" class="fcm-orbit-button" style="background: transparent; color: var(--orbit-text-muted); border: 1px solid var(--orbit-border); box-shadow: none; padding: 10px 20px; font-size: 14px;">
+                        <span class="dashicons dashicons-database-add" style="font-size: 16px; width: 16px; height: 16px;"></span>
+                        Update Schema
                     </button>
                 </form>
             </div>
