@@ -233,6 +233,10 @@ class FCM_Reels_API {
             'created_at'    => current_time( 'mysql' ),
         ] );
 
+        if ( ! $inserted ) {
+            error_log( "FCM Orbits Analytics Error: Failed to insert event. SQL Error: " . $wpdb->last_error );
+        }
+
         if ( $inserted && $request->get_param( 'event_type' ) === 'video_view' ) {
             // Still increment the legacy counter for backward compatibility with existing shortcodes
             $posts_table = $wpdb->prefix . 'fcom_posts';

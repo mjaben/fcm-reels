@@ -503,6 +503,7 @@
             fetch(`${API}/track`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': NONCE },
+                credentials: 'same-origin',
                 body: JSON.stringify({
                     video_id: videoId,
                     event_type: eventType,
@@ -519,6 +520,7 @@
             fetch(`${API}/session`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': NONCE },
+                credentials: 'same-origin',
                 body: JSON.stringify({
                     session_id: sessionId,
                     viewed_count: sessionViewedCount,
