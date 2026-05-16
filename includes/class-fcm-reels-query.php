@@ -276,6 +276,7 @@ class FCM_Reels_Query {
                 p.meta        AS post_meta,
                 p.reactions_count,
                 p.comments_count,
+                p.views_count,
                 p.user_id,
                 xp.display_name,
                 xp.avatar,
@@ -375,6 +376,7 @@ class FCM_Reels_Query {
             ],
             'likes_count'    => (int) $row->reactions_count,
             'comments_count' => (int) $row->comments_count,
+            'views_count'    => (int) $row->views_count,
             'user_liked'     => $user_liked,
             'created_at'     => $row->archive_created_at,
         ];

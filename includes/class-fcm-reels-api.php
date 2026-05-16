@@ -108,6 +108,19 @@ class FCM_Reels_API {
             'permission_callback' => [ $this, 'check_permission' ],
         ] );
 
+        // POST /fcm-reels/v1/view (Log a video view)
+        register_rest_route( 'fcm-reels/v1', '/view', [
+            'methods'             => 'POST',
+            'callback'            => [ $this, 'log_view' ],
+            'permission_callback' => '__return_true', // Public tracking
+            'args'                => [
+                'id' => [
+                    'required'          => true,
+                    'sanitize_callback' => 'absint',
+                ],
+            ],
+        ] );
+
         // Like/unlike a video post.
         register_rest_route( $namespace, '/like/(?P<id>\d+)', [
             'methods'             => WP_REST_Server::CREATABLE,
@@ -188,6 +201,37 @@ class FCM_Reels_API {
     }
 
     /**
+     * Log a video view.
+     *
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function log_view( $request ) {
+        $video_id = $request->get_param( 'id' );
+        
+        if ( ! $video_id ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => 'Invalid ID' ], 400 );
+        }
+
+        global $wpdb;
+        $posts_table = $wpdb->prefix . 'fcom_posts';
+
+        // Increment views_count directly in DB
+        $updated = $wpdb->query( $wpdb->prepare(
+            "UPDATE {$posts_table} SET views_count = views_count + 1 WHERE id = %d",
+            $video_id
+        ) );
+
+        if ( $updated === false ) {
+            error_log( "FCM Orbits Error: Failed to update views for ID $video_id" );
+        } else {
+            error_log( "FCM Orbits: Logged view for ID $video_id. Rows affected: $updated" );
+        }
+
+        return new WP_REST_Response( [ 'success' => true ], 200 );
+    }
+
+    /**
      * POST /fcm-reels/v1/like/{id}
      * Toggles a like reaction on a feed post using FCM's own reaction system.
      *
@@ -224,6 +268,7 @@ class FCM_Reels_API {
                 $user_id
             )
         );
+
 
         if ( $existing ) {
             // Unlike.
