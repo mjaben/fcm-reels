@@ -396,7 +396,7 @@ class FCM_Reels_Admin {
                         <th>Views</th>
                         <th>VTR</th>
                         <th>Completion</th>
-                        <th>Engagement <span style="font-size: 10px; font-weight: normal; color: #888; display: block;">(Likes x2 + Comments x5)</span></th>
+                        <th>Algorithm Score <span style="font-size: 10px; font-weight: normal; color: #888; display: block;">(Likes x2 + Comments x5)</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -440,7 +440,7 @@ class FCM_Reels_Admin {
                         <th>Orbits</th>
                         <th>Total Views</th>
                         <th>Avg. VTR</th>
-                        <th>Total Engagement <span style="font-size: 10px; font-weight: normal; color: #888; display: block;">(Likes x2 + Comments x5)</span></th>
+                        <th>Algorithm Score <span style="font-size: 10px; font-weight: normal; color: #888; display: block;">(Likes x2 + Comments x5)</span></th>
                     </tr>
                 </thead>
                 <tbody>
