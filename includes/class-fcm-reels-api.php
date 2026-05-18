@@ -98,6 +98,10 @@ class FCM_Reels_API {
                     'default'           => 0,
                     'sanitize_callback' => 'absint',
                 ],
+                'seen'       => [
+                    'default'           => '',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
             ],
         ] );
 
@@ -187,8 +191,9 @@ class FCM_Reels_API {
         $cursor   = $request->get_param( 'cursor' );
         $space    = $request->get_param( 'space' );
         $seed     = absint( $request->get_param( 'seed' ) );
+        $seen     = $request->get_param( 'seen' );
 
-        $data = $query->get_videos_v2( $cursor, $per_page, $space, $seed );
+        $data = $query->get_videos_v2( $cursor, $per_page, $space, $seed, $seen );
 
         $response = rest_ensure_response( $data );
 

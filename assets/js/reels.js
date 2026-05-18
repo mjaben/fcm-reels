@@ -102,6 +102,12 @@
         }
         if (currentSpace) url += `&space=${currentSpace}`;
 
+        // UX Fix: Send the last 50 seen videos to explicitly exclude them from this batch
+        if (seenVideos.length > 0) {
+            const recentSeen = seenVideos.slice(-50).join(',');
+            url += `&seen=${encodeURIComponent(recentSeen)}`;
+        }
+
         try {
             const resp = await fetch(url, {
                 headers: { 'X-WP-Nonce': NONCE },

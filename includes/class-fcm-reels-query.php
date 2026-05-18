@@ -126,7 +126,7 @@ class FCM_Reels_Query {
      * @param int    $seed     Random seed.
      * @return array
      */
-    public function get_videos_v2( $cursor = '', $per_page = 8, $space = '', $seed = 0 ) {
+    public function get_videos_v2( $cursor = '', $per_page = 8, $space = '', $seed = 0, $seen = '' ) {
         $user_id = get_current_user_id();
         $per_page = absint( $per_page );
 
@@ -140,8 +140,8 @@ class FCM_Reels_Query {
             }
         }
 
-        // 2. Get/Generate the Universe Pool
-        $pool = $this->get_discovery_pool( $user_id, $space, $seed );
+        // 2. Get/Generate the Universe Pool (now with Seen Penalties instead of exclusions)
+        $pool = $this->get_discovery_pool( $user_id, $space, $seed, $seen );
         
         if ( empty( $pool ) ) {
             return [ 'videos' => [], 'next_cursor' => null, 'has_more' => false ];
@@ -180,7 +180,9 @@ class FCM_Reels_Query {
     /**
      * Generate or retrieve the ranked ID pool for a session.
      */
-    private function get_discovery_pool( $user_id, $space, $seed ) {
+    private function get_discovery_pool( $user_id, $space, $seed, $seen = '' ) {
+        // We do not include $seen in the cache key.
+        // We want the pool to be generated and cached specifically with the penalty applied for this exact session seed.
         $cache_key = "fcm_reels_pool_{$user_id}_" . md5( $space . $seed );
         $pool = get_transient( $cache_key );
 
@@ -198,10 +200,20 @@ class FCM_Reels_Query {
             $space_where = $wpdb->prepare( "AND sp.slug = %s", $space );
         }
 
+        // The Codex UX Fix: Seen Penalties instead of Exclusions.
+        // Drops seen videos heavily in score so they act as fallback inventory.
+        $seen_penalty = "";
+        if ( ! empty( $seen ) ) {
+            $seen_arr = array_map( 'absint', explode( ',', $seen ) );
+            if ( ! empty( $seen_arr ) ) {
+                $seen_list = implode( ',', $seen_arr );
+                $seen_penalty = "- (CASE WHEN p.id IN ({$seen_list}) THEN 50.0 ELSE 0 END)";
+            }
+        }
+
         $metrics_tbl = FCM_Reels_DB::get_metrics_table();
 
         // Generate the ranked universe using the Intelligent Analytics Waterfall
-        // Score = (Watch Time x 0.4) + (Completion Rate x 0.3) + (Engagement Score x 0.2) + (Random discovery factor)
         $sql = "
             SELECT p.id
             FROM {$posts_tbl} p
@@ -213,10 +225,12 @@ class FCM_Reels_Query {
               AND p.status = 'published'
               {$space_where}
             ORDER BY (
-                (IFNULL(m.avg_watch_time, 0) * 0.4)
-                + (IFNULL(m.completion_rate, 0) * 0.003) -- Normalizing 0-100 to weighted factor
-                + (IFNULL(m.engagement_score, 0) * 0.2)
+                (LOG10(IFNULL(m.avg_watch_time, 0) + 1) * 2.0)
+                + (IFNULL(m.completion_rate, 0) * 0.003) 
+                + (LOG10(IFNULL(m.engagement_score, 0) + 1) * 2.0)
+                - (DATEDIFF(NOW(), p.created_at) * 0.1) -- Time penalty
                 + (RAND({$seed}) * 5.0) -- Higher random factor for fresh discovery
+                {$seen_penalty}
             ) DESC
             LIMIT 500
         ";
