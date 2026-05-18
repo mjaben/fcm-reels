@@ -203,6 +203,10 @@
         if (video.author.profile_url) {
             avatarLink.href = video.author.profile_url;
             nameLink.href = video.author.profile_url;
+            
+            // Engagement tracking
+            avatarLink.addEventListener('click', () => markVideoAsSeen(video.id));
+            nameLink.addEventListener('click', () => markVideoAsSeen(video.id));
         }
         avatar.src = video.author.avatar || '';
         nameLink.textContent = video.author.name || 'Member';
@@ -222,13 +226,20 @@
         
         const likeBtn = slide.querySelector('.reel-like-btn');
         if (video.user_liked) likeBtn.classList.add('is-liked');
-        likeBtn.addEventListener('click', (e) => { e.stopPropagation(); handleLike(slide, video.id); });
+        likeBtn.addEventListener('click', (e) => { 
+            e.stopPropagation(); 
+            markVideoAsSeen(video.id); // Engagement tracking
+            handleLike(slide, video.id); 
+        });
 
-        slide.querySelector('.reel-comment-btn').href = slide.dataset.postUrl || '#';
-        slide.querySelector('.reel-comment-btn .reel-action-btn__count').textContent = formatCount(video.comments_count);
+        const commentBtn = slide.querySelector('.reel-comment-btn');
+        commentBtn.href = slide.dataset.postUrl || '#';
+        commentBtn.querySelector('.reel-action-btn__count').textContent = formatCount(video.comments_count);
+        commentBtn.addEventListener('click', () => markVideoAsSeen(video.id)); // Engagement tracking
 
         slide.querySelector('.reel-share-btn').addEventListener('click', (e) => {
             e.stopPropagation();
+            markVideoAsSeen(video.id); // Engagement tracking
             openShareModal(slide.dataset.postUrl || window.location.href, video.title || '', video.thumbnail_url || '');
         });
 
@@ -284,7 +295,7 @@
             v.play().catch(() => {});
         }
 
-        markVideoAsSeen(parseInt(slide.dataset.id));
+        // Removed Impression-Based tracking. Seen is now Attention-Based.
 
         // 👁️ View Tracking
         if (viewTimer) clearTimeout(viewTimer);
@@ -339,6 +350,12 @@
         const pct = (v.currentTime / v.duration) * 100;
         const fill = slide.querySelector('.reel-progress-fill');
         if (fill) fill.style.width = pct + '%';
+
+        // MVP Attention-Based Tracking (Hybrid Model)
+        // Mark as 'seen' only if watched for >= 8 seconds OR >= 35% of duration
+        if (v.currentTime >= 8 || pct >= 35) {
+            markVideoAsSeen(parseInt(slide.dataset.id));
+        }
     }
 
     function setupMuteButton() {
