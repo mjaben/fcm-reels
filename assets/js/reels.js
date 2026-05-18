@@ -34,7 +34,8 @@
     /* ── State ── */
     let discoverySeed = Math.floor(Math.random() * 999999);
     let seenVideos = [];
-    const seenKey = 'fcm_reels_seen_' + USER_ID;
+    // Update key to v2 to force a global reset of seen history for all users
+    const seenKey = 'fcm_reels_seen_v2_' + USER_ID;
     try {
         seenVideos = JSON.parse(localStorage.getItem(seenKey) || '[]');
     } catch (e) { }
