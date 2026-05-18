@@ -215,7 +215,7 @@ class FCM_Reels_Query {
 
         // Generate the ranked universe using the Intelligent Analytics Waterfall
         $sql = "
-            SELECT p.id
+            SELECT DISTINCT p.id
             FROM {$posts_tbl} p
             INNER JOIN {$archive_tbl} ma ON ma.feed_id = p.id
             LEFT JOIN {$spaces_tbl} sp ON sp.id = p.space_id
@@ -245,27 +245,9 @@ class FCM_Reels_Query {
             return [];
         }
 
-        // SMALL LIBRARY MULTIPLIER:
-        // If we have very few videos, we multiply them into a larger pool 
-        // and shuffle them to ensure variety while preventing back-to-back duplicates.
+        // Remove Small Library Multiplier: We do not want to artificially duplicate videos.
+        // If the library only has 3 videos, it will show 3 and then pull fresh ones.
         $pool = $ids;
-        if ( count( $ids ) < 10 ) {
-            $pool = $ids; // Start with the first batch
-            for ( $i = 0; $i < 10; $i++ ) {
-                $temp = $ids;
-                shuffle( $temp );
-                
-                // 🛑 SMOOTH TRANSITION: 
-                // Ensure the first item of the new batch isn't the same as the last item of the pool
-                if ( ! empty( $pool ) && $pool[ count( $pool ) - 1 ] === $temp[0] && count( $temp ) > 1 ) {
-                    // Simple swap: Move the duplicate to the end of the temp batch
-                    $duplicate = array_shift( $temp );
-                    $temp[] = $duplicate;
-                }
-                
-                $pool = array_merge( $pool, $temp );
-            }
-        }
 
         if ( ! empty( $pool ) ) {
             set_transient( $cache_key, $pool, $this->pool_expiry );
