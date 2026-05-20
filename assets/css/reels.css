@@ -720,33 +720,30 @@ img { display: block; }
 /* ============================================================
    RESPONSIVE
    ============================================================ */
-
-/* Desktop: center the feed in a narrow column */
 @media (min-width: 768px) {
-    .reels-slides {
+    body.fcm-reels-body {
+        background: #0a0a0a; /* Dark background outside the feed */
         display: flex;
-        flex-direction: column;
         align-items: center;
-    }
-
-    .reel-slide {
-        width: 100%;
-        max-width: 420px;
-        height: 100%;
-        border-radius: 0;
-        border-left: 1px solid var(--reels-border);
-        border-right: 1px solid var(--reels-border);
-    }
-
-    .reels-feed {
-        display: flex;
         justify-content: center;
     }
-}
 
-@media (min-width: 1024px) {
-    .reel-slide {
-        max-width: 400px;
+    #fcm-reels-app {
+        width: 100%;
+        max-width: 450px;
+        height: 100vh;
+        max-height: 900px;
+        position: relative;
+        background: var(--reels-bg);
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    
+    .reels-header, .reels-filter-bar {
+        position: absolute;
+        width: 100%;
+        max-width: 100%; /* Inherits from #fcm-reels-app */
     }
 }
 
